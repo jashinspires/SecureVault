@@ -1,0 +1,8 @@
+{
+  "secret": "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP",
+  "issuer": "SecureVault Demo",
+  "account_name": "demo@example.com",
+  "digits": 6,
+  "interval": 30,
+  "provisioning_uri": "otpauth://totp/SecureVault%20Demo:demo%40example.com?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=SecureVault%20Demo"
+}

@@ -1,0 +1,5 @@
+Timestamp: 2025-10-23T09:19:01Z
+Password: demo-password
+TOTP secret: JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
+Sample OTP (valid near timestamp): 264980
+Command: python -m securevault decrypt --input examples/sample.txt.svlt --out sample_dec.txt --password-prompt --otp --otp-meta examples/sample.totp.json
