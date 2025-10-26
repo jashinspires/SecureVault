@@ -6,7 +6,7 @@ SecureVault is a beginner-friendly utility that helps you encrypt files and fold
 
 ---
 
-## Quick start (for beginners)
+## Quick start 
 
 1. Make sure you have **Python 3.8+** and `pip` installed.
 2. Install the required packages:
@@ -35,7 +35,7 @@ pytest
 
 ---
 
-## What SecureVault does (plain language)
+## What SecureVault does 
 
 * **Encryption**: It encrypts your data using AES-256 in Galois/Counter Mode (GCM). This keeps your data confidential and detects tampering.
 * **Password hardening**: Your password is stretched using PBKDF2-HMAC-SHA256 with 200,000 iterations and a random 16-byte salt. That makes brute-force attacks much slower.
@@ -45,7 +45,7 @@ pytest
 
 ---
 
-## Security model (short)
+## Security model 
 
 * **Key derivation**: PBKDF2-HMAC-SHA256 with 200,000 iterations and a 16-byte random salt. This slows down guessing attacks.
 * **Encryption**: AES-256-GCM with a 12-byte random nonce and a 16-byte authentication tag.
@@ -101,7 +101,7 @@ There is an `examples/` folder with `sample.txt.svlt`, a `sample.totp.json`, and
 
 ---
 
-## GUI (quickstart)
+## GUI 
 
 Start the small Tkinter GUI:
 
@@ -122,7 +122,7 @@ GUI features:
 
 ## Tests & manual checks
 
-Manual test plan (simple):
+Manual test plan:
 
 1. Create TOTP metadata.
 2. Encrypt a small file.
@@ -166,13 +166,3 @@ Dependencies: `cryptography`, `pyotp`, `qrcode` (optional), and `Pillow` (option
 
 ---
 
-## Contributing
-
-If you'd like to help:
-
-* Open issues for bugs or feature requests.
-* Send small pull requests for docs, tests, or minor improvements.
-
----
-
-If you want, I can make the README even shorter (one‑page quickstart) or produce a separate `DEVELOPER.md` with design notes. Which would you prefer?
