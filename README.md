@@ -1,130 +1,178 @@
-<<<<<<< HEAD
-# SecureVault
-=======
 # SecureVault
 
-SecureVault is a beginner-friendly tool that encrypts files or entire folders with AES-256 in Galois/Counter Mode (GCM) and requires two factors to decrypt: the original password (PBKDF2-HMAC-SHA256 with 200k iterations) and a rolling TOTP code (Google Authenticator compatible). The project provides both a CLI and a compact Tkinter GUI so you can secure data on local disks or removable drives.
+SecureVault is a beginner-friendly utility that helps you encrypt files and folders with strong, modern cryptography and an extra layer of protection: a time-based one‑time password (TOTP) like Google Authenticator. You can use it from the command line (CLI) or a small Tkinter-based GUI.
 
-## Quickstart
+> Friendly summary: enter a password and a 6-digit code from an authenticator app to decrypt. That way, even if someone steals your encrypted file and guesses your password, they still need the rolling TOTP code to open it.
 
-1. **Prerequisites**: Python 3.8+ and `pip`.
-2. **Install dependencies**:
-   ```bash
-   pip install cryptography pyotp qrcode
-   ```
-   `qrcode` is optional; without it the CLI prints a provisioning URI instead of an ASCII QR code.
-3. **Run the CLI**:
-   ```bash
-   python -m securevault encrypt --input secret.txt --out secret.txt.svlt --password-prompt
-   python -m securevault provision-totp --output secret.totp.json --account you@example.com
-   python -m securevault decrypt --input secret.txt.svlt --out secret.txt --password-prompt --otp --otp-meta secret.totp.json
-   # optional: beginner friendly output
-   python -m securevault encrypt --input secret.txt --out secret.txt.json --password-prompt --format json
-   ```
-   Decryption now fails unless both the password and a current 6-digit OTP are correct.
-4. **Run tests**:
-   ```bash
-   pytest
-   ```
+---
 
-## Security model
+## Quick start (for beginners)
 
-- **Key derivation**: 200,000-iteration PBKDF2-HMAC-SHA256 with a random 16-byte salt to slow brute-force attempts. Increase iterations for stronger protection at the cost of CPU time.
-- **Encryption**: AES-256-GCM with 12-byte random nonce and 16-byte authentication tag to guarantee confidentiality and integrity.
-- **Two-factor requirement**: TOTP secret stored in `*.totp.json` metadata file (per encrypted dataset). Decryption only succeeds when both the password and the current 6-digit code verify successfully.
-- **Header design**: Binary header records magic bytes, version, flags, salt, nonce, and tag. Optional human-readable JSON wrapper base64-encodes the same data for education and debugging.
+1. Make sure you have **Python 3.8+** and `pip` installed.
+2. Install the required packages:
 
-## What works now
-
-- Password-derived AES-256 encryption/decryption with PBKDF2-HMAC-SHA256 (200k iterations, 16-byte random salt, 12-byte nonce).
-- Binary header storing magic bytes, version, salt, nonce length, tag length, and ciphertext.
-- Flags byte tracks whether the original input was a directory archive; decryption will automatically extract to the provided directory path.
-- Human-readable JSON wrapper (`--format json`) that base64-encodes the header fields and ciphertext for ease of inspection and tutorials.
-- CLI command `provision-totp` writes a JSON metadata file and prints a provisioning URI/QR for Google Authenticator.
-- CLI commands `encrypt` and `decrypt` require both password and valid TOTP for successful decryption.
-- Unit tests covering key derivation, encryption/decryption round-trips, incorrect password handling, and OTP verification edge cases.
-- Optional Tkinter GUI (`python -m securevault.gui`) for point-and-click workflows, including provisioning, encryption, and decryption with password + TOTP prompts.
-
-## Example CLI usage
-
+```bash
+pip install cryptography pyotp qrcode
 ```
-# provision and get QR URI
+
+* `qrcode` is optional. Without it, SecureVault will print a TOTP provisioning URI instead of an ASCII QR code.
+
+3. Try the main commands (examples use the CLI):
+
+```bash
+# create TOTP metadata (for Google Authenticator)
 python -m securevault provision-totp --output totp-meta.json --account you@example.com
 
-# encrypt a file
+# encrypt a file (you will be prompted for a password)
 python -m securevault encrypt --input secret.txt --out secret.txt.svlt --password-prompt
 
-# decrypt
+# decrypt (you will be prompted for password then a 6-digit OTP)
 python -m securevault decrypt --input secret.txt.svlt --out secret.txt --password-prompt --otp --otp-meta totp-meta.json
-# prompts: password (hidden), then "Enter 6-digit TOTP"
+
+# run unit tests
+pytest
 ```
 
-An `examples/` directory contains `sample.txt.svlt`, a matching `sample.totp.json`, and `decryption-log.txt` documenting the commands used to produce them. Use these artifacts to test the workflow quickly (replace the sample password and TOTP secret before securing real data).
+---
 
-## Next steps
+## What SecureVault does (plain language)
 
-- Extend the header parser to handle alternate formats and folder packaging.
-- Add a minimal Tkinter GUI (optional milestone).
-- Expand folder packaging to support streaming (tar) and document trade-offs between zip/tar.
+* **Encryption**: It encrypts your data using AES-256 in Galois/Counter Mode (GCM). This keeps your data confidential and detects tampering.
+* **Password hardening**: Your password is stretched using PBKDF2-HMAC-SHA256 with 200,000 iterations and a random 16-byte salt. That makes brute-force attacks much slower.
+* **Two-factor decryption**: Besides the password, SecureVault requires a valid 6-digit TOTP (Google Authenticator-style) to decrypt.
+* **File & folder support**: You can encrypt single files or entire folders. When encrypting a folder, SecureVault archives it before encrypting, and will extract it automatically when decrypting.
+* **Human-readable option**: For learning and debugging, you can create a JSON-formatted output that base64-encodes the internal fields instead of a binary file.
 
-## Folder encryption workflow
+---
 
-- When `--input` points at a directory, SecureVault streams the contents into a ZIP archive before encryption.
-- During decryption the archive flag stored in the header ensures the decrypted data is automatically extracted into the directory supplied via `--out`.
-- Keep the output directory empty before decrypting to avoid overwriting unrelated files.
+## Security model (short)
 
-## Header layout (binary format)
+* **Key derivation**: PBKDF2-HMAC-SHA256 with 200,000 iterations and a 16-byte random salt. This slows down guessing attacks.
+* **Encryption**: AES-256-GCM with a 12-byte random nonce and a 16-byte authentication tag.
+* **TOTP**: The per-dataset TOTP secret is stored in a `*.totp.json` file. Decryption checks both the password-derived key and the current TOTP code.
+
+If you want stronger protection, you can increase PBKDF2 iterations—but it will make encrypt/decrypt slower.
+
+---
+
+## Files and header layout (useful to know)
+
+SecureVault stores a small header before the ciphertext. In binary mode the layout is roughly:
 
 ```
 [offset] field
-0..4    b"SVLT"          # magic
+0..3    b"SVLT"         # magic bytes
 4       version byte     # 0x01
 5       flags byte       # bit0 => archive payload
 6..21   salt (16 bytes)
-22      nonce length (byte)
+22      nonce length (1 byte)
 23..    nonce bytes (default 12)
-...     tag length (byte) + tag (16 bytes)
+...     tag length (1 byte) + auth tag (16 bytes)
 ...     ciphertext bytes
 ```
 
-JSON output stores the same values base64-encoded inside a structured object for beginners who prefer inspecting values without binary tooling.
+The JSON output contains the same values but base64-encoded in a readable object.
 
-## GUI quickstart
+---
 
-Launch the Tkinter interface:
+## Example CLI workflow
+
+1. Provision TOTP metadata:
+
+```bash
+python -m securevault provision-totp --output demo.totp.json --account demo@example.com
+```
+
+2. Encrypt a file:
+
+```bash
+python -m securevault encrypt --input demo.txt --out demo.svlt --password-prompt
+```
+
+3. Decrypt it back:
+
+```bash
+python -m securevault decrypt --input demo.svlt --out demo.txt --password-prompt --otp --otp-meta demo.totp.json
+```
+
+During decryption you will be prompted for the password (hidden) and then for the current 6-digit TOTP code.
+
+There is an `examples/` folder with `sample.txt.svlt`, a `sample.totp.json`, and a short `decryption-log.txt` to help you follow the steps.
+
+---
+
+## GUI (quickstart)
+
+Start the small Tkinter GUI:
 
 ```bash
 python -m securevault.gui
 ```
 
-Features:
-- Browse to any file, folder, or removable drive (USB pendrive, external HDD) using the "Browse" buttons.
-- Provision TOTP metadata directly from the GUI; the QR code appears in a pop-up (requires `qrcode` and `Pillow`, otherwise the provisioning URI is shown as text).
-- Encrypts folders by zipping transparently; decrypted archives expand into the chosen directory.
-- Enforces password + TOTP verification whenever you decrypt—even on a different computer, provided you copy the encrypted file and matching TOTP metadata JSON together.
+GUI features:
 
-> **Tip:** Keep the encrypted file (`*.svlt` or `*.json`) and the TOTP metadata JSON on the same removable media. Anyone without both the password and the rolling TOTP code cannot decrypt the payload, even if the drive is accessed on another machine.
+* Point-and-click provisioning of a TOTP secret (QR popup if `qrcode` and `Pillow` are installed).
+* Browse to select files, folders, or removable drives.
+* Encrypt and decrypt with password + TOTP prompts.
+* Zips folders automatically before encrypting; extracts them automatically when decrypting.
 
-![SecureVault GUI](docs/gui-screenshot.png)
+**Tip:** Keep the encrypted file and its matching `*.totp.json` together on the same removable drive if you plan to move them between machines.
 
-## Packaging & deployment notes
+---
 
-- Create standalone binaries with PyInstaller: `pyinstaller --onefile -w securevault\gui.py` (ensures Tkinter GUI launches without a console window). Ship `qrcode`/`Pillow` alongside if you want QR rendering.
-- For cross-platform CLI usage, distribute the source package or use PyInstaller in console mode.
-- Dependencies are limited to `cryptography`, `pyotp`, `qrcode`, and optionally `Pillow` for QR previews.
+## Tests & manual checks
 
-## Manual test plan
+Manual test plan (simple):
 
-1. Provision a TOTP secret (`python -m securevault provision-totp --output demo.totp.json --account demo@example.com`).
-2. Encrypt a small file (`python -m securevault encrypt --input demo.txt --out demo.svlt --password-prompt`).
-3. Attempt decryption with correct password + current OTP — expect success.
-4. Retry with an incorrect password — expect `Decryption failed` error.
-5. Retry with an incorrect/expired OTP — expect `Invalid or expired TOTP code`.
-6. Encrypt a folder and decrypt into an empty directory — verify files are restored intact.
+1. Create TOTP metadata.
+2. Encrypt a small file.
+3. Decrypt with the correct password + OTP — should succeed.
+4. Try decrypting with a wrong password — should fail.
+5. Try with an expired/incorrect OTP — should fail.
+6. Encrypt a folder and decrypt into an empty directory to confirm files are restored correctly.
 
-## Limitations & future ideas
+Unit tests (run `pytest`) cover the core functions: key derivation, encrypt/decrypt round-trips, incorrect password handling, and OTP checks.
 
-- TOTP metadata JSON is stored alongside encrypted data for convenience; move it to a secure vault or ensure removable media is protected from tampering.
-- Current archiving uses ZIP in memory—large directories could consume additional RAM. Streaming tar/zip support and progress feedback are planned upgrades.
-- GUI is intentionally minimal; future improvements include dark-mode polish, password strength meters, and key rotation UI.
->>>>>>> 5cf94d5 (Initial SecureVault Release)
+---
+
+## Current limitations & planned improvements
+
+**Limitations**
+
+* TOTP metadata is stored in a JSON file for convenience. For maximum security, store it separately or in a secure vault.
+* Archiving currently uses in-memory ZIP which can use a lot of RAM for very large folders.
+* The GUI is intentionally minimal.
+
+**Planned improvements**
+
+* Add streaming archive support (tar/zip) to avoid high memory usage.
+* Improve the GUI (progress bars, password-strength meter, optional dark mode).
+* Add a header parser that accepts multiple formats and optional folder packaging options.
+* Consider key rotation workflows and better safe storage patterns for TOTP secrets.
+
+---
+
+## Packaging & distribution
+
+* Create a standalone GUI binary with PyInstaller, e.g.:
+
+```bash
+pyinstaller --onefile -w securevault/gui.py
+```
+
+* For CLI usage, distributing the source package or a console-mode PyInstaller build works well.
+
+Dependencies: `cryptography`, `pyotp`, `qrcode` (optional), and `Pillow` (optional, for QR images in the GUI).
+
+---
+
+## Contributing
+
+If you'd like to help:
+
+* Open issues for bugs or feature requests.
+* Send small pull requests for docs, tests, or minor improvements.
+
+---
+
+If you want, I can make the README even shorter (one‑page quickstart) or produce a separate `DEVELOPER.md` with design notes. Which would you prefer?
